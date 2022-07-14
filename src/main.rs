@@ -38,17 +38,29 @@ fn main() -> () {
 
     let url = generate_url(&cmd, &term, &value);
 
-    let ret: String = reqwest::get(&url).unwrap().text().unwrap();
+    let record: json::JsonValue =
+        json::parse(&reqwest::get(&url).unwrap().text().unwrap()).unwrap();
 
-    let parsed = json::parse(&ret).unwrap();
+    let ipr_records: Vec<serde_json::Value> =
+        serde_json::from_str(&record["data"]["interpro_domains"].dump()).unwrap();
+    let kegg_records: Vec<serde_json::Value> =
+        serde_json::from_str(&record["data"]["KEGGpathway"].dump()).unwrap();
+    for i in ipr_records.iter() {
+        println!("{:#}", i)
+    }
+    for k in kegg_records.iter() {
+        println!("{:#}", k)
+    }
 
-    //let ret_stringed = json::stringify(ret);
+    //let parsed = json::parse(&ret).unwrap();
 
+    /*
     let v: Vec<serde_json::Value> =
         serde_json::from_str(&parsed["data"]["interpro_domains"].dump()).unwrap();
     for ipracc in v.iter() {
         println!("{}", ipracc["id"]);
     }
+    */
     //let v: serde_json::Value = serde_json::from_str(.dump()).unwrap();
 
     //println!("{}", data["data"]);
