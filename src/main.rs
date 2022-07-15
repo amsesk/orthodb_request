@@ -56,33 +56,43 @@ fn main() -> () {
         wtr.write_record(&[
             &format!("{}", &value),
             "OrthoDB",
-            "label",
+            &format!("{}", &value),
             &format!("{}", hm["name"].as_str().unwrap()),
-        ]);
+        ])
+        .unwrap()
     }
 
-    for hm in get_data(&record, "KEGGpathway").unwrap() {
-        wtr.write_record(&[
-            &format!("{}", &value),
-            "KEGGpathway",
-            &format!("{}", hm["id"].as_str().unwrap()),
-            &format!("{}", hm["description"].as_str().unwrap()),
-        ]);
+    if let Some(res) = get_data(&record, "KEGGpathway") {
+        for hm in res {
+            wtr.write_record(&[
+                &format!("{}", &value),
+                "KEGGpathway",
+                &format!("{}", hm["id"].as_str().unwrap()),
+                &format!("{}", hm["description"].as_str().unwrap()),
+            ])
+            .unwrap();
+        }
     }
-    for hm in get_data(&record, "interpro_domains").unwrap() {
-        wtr.write_record(&[
-            &format!("{}", &value),
-            "interpro_domains",
-            &format!("{}", hm["id"].as_str().unwrap()),
-            &format!("{}", hm["description"].as_str().unwrap()),
-        ]);
+    if let Some(res) = get_data(&record, "interpro_domains") {
+        for hm in res {
+            wtr.write_record(&[
+                &format!("{}", &value),
+                "interpro_domains",
+                &format!("{}", hm["id"].as_str().unwrap()),
+                &format!("{}", hm["description"].as_str().unwrap()),
+            ])
+            .unwrap();
+        }
     }
-    for hm in get_data(&record, "functional_category").unwrap() {
-        wtr.write_record(&[
-            &format!("{}", &value),
-            "functional_category",
-            &format!("{}", hm["id"].as_str().unwrap()),
-            &format!("{}", hm["description"].as_str().unwrap()),
-        ]);
+    if let Some(res) = get_data(&record, "functional_category") {
+        for hm in res {
+            wtr.write_record(&[
+                &format!("{}", &value),
+                "functional_category",
+                &format!("{}", hm["id"].as_str().unwrap()),
+                &format!("{}", hm["description"].as_str().unwrap()),
+            ])
+            .unwrap();
+        }
     }
 }
