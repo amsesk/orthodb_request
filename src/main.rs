@@ -1,7 +1,8 @@
 use clap::{App, Arg};
-use orthodb_request::generate_url;
+use orthodb_request::{generate_url, get_data};
 use reqwest;
 use serde_json;
+use std::collections::HashMap;
 
 fn main() -> () {
     let args = App::new("orthodb_request")
@@ -40,17 +41,16 @@ fn main() -> () {
     let record: serde_json::Value =
         serde_json::from_str(&reqwest::get(&url).unwrap().text().unwrap()).unwrap();
 
-    match record["data"]["KEGGpathway"].as_array() {
-        Some(x) => {
-            for k in x {
-                if let Some(keggs) = k.as_object() {
-                    for rec in keggs {
-                        let (key, val) = rec;
-                        println!("{},{}", key, val);
-                    }
-                }
-            }
+    for hm in get_data(&record, "KEGGpathway").unwrap() {
+        for (k,v) in hm {
+            println!("{} -- {}", k, v);
         }
-        None => (),
+        println!("-----------------");
+    }
+    for hm in get_data(&record, "interpro_domains").unwrap() {
+        for (k,v) in hm {
+            println!("{} -- {}", k, v);
+        }
+        println!("-----------------");
     }
 }
