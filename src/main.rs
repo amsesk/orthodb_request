@@ -1,8 +1,10 @@
 use clap::{App, Arg};
+use csv::WriterBuilder;
 use orthodb_request::{generate_url, get_data};
 use reqwest;
 use serde_json;
-use std::collections::HashMap;
+use std::fs::OpenOptions;
+use std::path::Path;
 
 fn main() -> () {
     let args = App::new("orthodb_request")
@@ -41,16 +43,46 @@ fn main() -> () {
     let record: serde_json::Value =
         serde_json::from_str(&reqwest::get(&url).unwrap().text().unwrap()).unwrap();
 
+    let outpath = format!("{}_orthodb_results.tsv", value);
+    let handle = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(Path::new(&outpath))
+        .unwrap();
+    let mut wtr = WriterBuilder::new().delimiter(b'\t').from_writer(handle);
+
+    for hm in get_data(&record, "name").unwrap() {
+        wtr.write_record(&[
+            &format!("{}", &value),
+            "OrthoDB",
+            "label",
+            &format!("{}", hm["name"].as_str().unwrap()),
+        ]);
+    }
+
     for hm in get_data(&record, "KEGGpathway").unwrap() {
-        for (k,v) in hm {
-            println!("{} -- {}", k, v);
-        }
-        println!("-----------------");
+        wtr.write_record(&[
+            &format!("{}", &value),
+            "KEGGpathway",
+            &format!("{}", hm["id"].as_str().unwrap()),
+            &format!("{}", hm["description"].as_str().unwrap()),
+        ]);
     }
     for hm in get_data(&record, "interpro_domains").unwrap() {
-        for (k,v) in hm {
-            println!("{} -- {}", k, v);
-        }
-        println!("-----------------");
+        wtr.write_record(&[
+            &format!("{}", &value),
+            "interpro_domains",
+            &format!("{}", hm["id"].as_str().unwrap()),
+            &format!("{}", hm["description"].as_str().unwrap()),
+        ]);
+    }
+    for hm in get_data(&record, "functional_category").unwrap() {
+        wtr.write_record(&[
+            &format!("{}", &value),
+            "functional_category",
+            &format!("{}", hm["id"].as_str().unwrap()),
+            &format!("{}", hm["description"].as_str().unwrap()),
+        ]);
     }
 }

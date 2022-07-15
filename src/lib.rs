@@ -16,14 +16,19 @@ pub fn generate_url(cmd: &str, term: &str, value: &str) -> String {
     url
 }
 
-pub fn get_data(value: &serde_json::Value, label: &str) -> Option<Vec<HashMap<String, serde_json::Value>>> {
+pub fn get_data(
+    value: &serde_json::Value,
+    label: &str,
+) -> Option<Vec<HashMap<String, serde_json::Value>>> {
     let search = &value[DATALABEL][label];
-    
+
     if search.is_null() {
-        return None
+        return None;
     }
+
+    let mut retvec: Vec<HashMap<String, serde_json::Value>> = vec![];
+
     if search.is_array() {
-        let mut retvec: Vec<HashMap<String, serde_json::Value>> = vec![];
         match search.as_array() {
             Some(result) => {
                 for entry in result {
@@ -33,15 +38,21 @@ pub fn get_data(value: &serde_json::Value, label: &str) -> Option<Vec<HashMap<St
                             let (key, val) = e;
                             map.insert(key.to_owned(), val.to_owned());
                         }
-                        retvec.push(map.to_owned());
+                        retvec.push(map);
                     }
                 }
             }
             None => (),
         }
 
-        return Some(retvec)
+        return Some(retvec);
+    } else {
+        if search.is_string() {
+            let mut map = HashMap::new();
+            map.insert(label.to_owned(), search.to_owned());
+            retvec.push(map);
+            return Some(retvec);
+        }
+        return None;
     }
-    None
-
 }
