@@ -1,18 +1,47 @@
+use csv;
+use serde_json;
 use std::collections::HashMap;
+use std::convert::From;
+use std::fmt;
 
 static ORTHODB_BASE_URL: &str = "https://www.orthodb.org";
 static GO_BASE_URL: &str = "http://api.geneontology.org/api/ontology/term/";
 static DATALABEL: &str = "data";
 
-pub trait GenerateUrl {
+pub trait Url {
     fn generate(&self) -> String;
 }
 
+pub struct GoUrl {
+    base: &'static str,
+    term: String,
+}
+
+impl GoUrl {
+    pub fn new(term: String) -> GoUrl {
+        GoUrl {
+            base: GO_BASE_URL,
+            term: term,
+        }
+    }
+}
+
+impl Url for GoUrl {
+    fn generate(&self) -> String {
+        let mut url: String = String::new();
+        url.push_str(&self.base);
+        url.push('/');
+        url.push_str(&self.term);
+
+        url
+    }
+}
+
 pub struct OrthoDbUrl {
-    pub base: &'static str,
-    pub cmd: String,
-    pub term: String,
-    pub value: String,
+    base: &'static str,
+    cmd: String,
+    term: String,
+    value: String,
 }
 
 impl OrthoDbUrl {
@@ -25,7 +54,8 @@ impl OrthoDbUrl {
         }
     }
 }
-impl GenerateUrl for OrthoDbUrl {
+
+impl Url for OrthoDbUrl {
     fn generate(&self) -> String {
         let mut url: String = String::new();
         url.push_str(&self.base);
@@ -40,57 +70,59 @@ impl GenerateUrl for OrthoDbUrl {
     }
 }
 
-pub struct GoUrl {
-    pub base: &'static str,
-    pub term: String,
+pub struct GoOntologyJson {
+    goid: serde_json::Value,
+    label: serde_json::Value,
+    definition: serde_json::Value,
 }
 
-impl GoUrl {
-    pub fn new(term: String) -> GoUrl {
-        GoUrl {
-            base: GO_BASE_URL,
-            term: term,
+impl GoOntologyJson {
+    pub fn to_csv(&self, file_handle: &std::fs::File) {
+        let mut wtr = csv::WriterBuilder::new()
+            .delimiter(b'\t')
+            .from_writer(file_handle);
+        wtr.write_record(&[
+            &format!("{}", &self.goid.as_str().unwrap()),
+            &format!("{}", &self.label.as_str().unwrap()),
+            &format!("{}", &self.definition.as_str().unwrap()),
+        ])
+        .unwrap()
+    }
+}
+
+impl From<serde_json::Value> for GoOntologyJson {
+    fn from(record: serde_json::Value) -> Self {
+        GoOntologyJson {
+            goid: record["goid"].to_owned(),
+            label: record["label"].to_owned(),
+            definition: record["definition"].to_owned(),
         }
     }
 }
 
-impl GenerateUrl for GoUrl {
-    fn generate(&self) -> String {
-        let mut url: String = String::new();
-        url.push_str(ORTHODB_BASE_URL);
-        url.push('/');
-        url.push_str(&self.term);
-
-        url
+impl fmt::Display for GoOntologyJson {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "goid: {:?}\nlabel: {:?}\ndefinition: {:?}",
+            self.goid, self.label, self.definition
+        )
     }
 }
 
-pub struct Url<T: GenerateUrl> {
-    url: T,
-}
-
-impl<T> Url<T>
-where
-    T: GenerateUrl,
-{
-    pub fn new(api: String, cmd: String, term: String, value: String) -> Self {
-        if api == "go" {
-            Url {
-                url: GoUrl::new(String::from(term)),
-            }
-        } else if api == "odb" {
-            Url {
-                url: OrthoDbUrl::new(String::from(cmd), String::from(term), String::from(value)),
-            }
-        } else {
-            panic!()
-        }
-    }
-    pub fn generate(&self) -> String {
-        self.url.generate()
+pub fn args_to_url(api: String, cmd: String, term: String, value: String) -> Box<dyn Url> {
+    if api == "go" {
+        Box::new(GoUrl::new(String::from(term)))
+    } else if api == "odb" {
+        Box::new(OrthoDbUrl::new(
+            String::from(cmd),
+            String::from(term),
+            String::from(value),
+        ))
+    } else {
+        panic!("Unrecognized API: {}", &api)
     }
 }
-
 pub fn get_data(
     value: &serde_json::Value,
     label: &str,
