@@ -5,7 +5,7 @@ use std::convert::From;
 use std::fmt;
 
 static ORTHODB_BASE_URL: &str = "https://www.orthodb.org";
-static GO_BASE_URL: &str = "http://api.geneontology.org/api/ontology/term/";
+static GO_BASE_URL: &str = "http://api.geneontology.org/api/ontology/term";
 static DATALABEL: &str = "data";
 
 pub trait Url {
@@ -71,9 +71,10 @@ impl Url for OrthoDbUrl {
 }
 
 pub struct GoOntologyJson {
-    goid: serde_json::Value,
-    label: serde_json::Value,
-    definition: serde_json::Value,
+    marker: String,
+    goid: String,
+    label: String,
+    definition: String,
 }
 
 impl GoOntologyJson {
@@ -82,20 +83,25 @@ impl GoOntologyJson {
             .delimiter(b'\t')
             .from_writer(file_handle);
         wtr.write_record(&[
-            &format!("{}", &self.goid.as_str().unwrap()),
-            &format!("{}", &self.label.as_str().unwrap()),
-            &format!("{}", &self.definition.as_str().unwrap()),
+            &format!("{}", &self.marker),
+            &format!("{}", &self.goid),
+            &format!("{}", &self.label),
+            &format!("{}", &self.definition),
         ])
         .unwrap()
+    }
+    pub fn set_marker(&mut self, marker: &str) -> () {
+        self.marker = marker.to_owned();
     }
 }
 
 impl From<serde_json::Value> for GoOntologyJson {
     fn from(record: serde_json::Value) -> Self {
         GoOntologyJson {
-            goid: record["goid"].to_owned(),
-            label: record["label"].to_owned(),
-            definition: record["definition"].to_owned(),
+            marker: "".to_owned(),
+            goid: unpack_str_value(&record["goid"]),
+            label: unpack_str_value(&record["label"]),
+            definition: unpack_str_value(&record["definition"]),
         }
     }
 }
@@ -107,6 +113,13 @@ impl fmt::Display for GoOntologyJson {
             "goid: {:?}\nlabel: {:?}\ndefinition: {:?}",
             self.goid, self.label, self.definition
         )
+    }
+}
+
+pub fn unpack_str_value(v: &serde_json::Value) -> String {
+    match v.as_str() {
+        Some(x) => x.to_owned(),
+        None => "NA".to_owned(),
     }
 }
 

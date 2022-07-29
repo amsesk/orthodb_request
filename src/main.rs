@@ -38,6 +38,13 @@ fn main() -> () {
                 .takes_value(true)
                 .required(false),
         )
+        .arg(
+            Arg::new("marker")
+                .short('m')
+                .long("marker")
+                .takes_value(true)
+                .required(false),
+        )
         .get_matches();
 
     let api = args.value_of("api").unwrap();
@@ -50,6 +57,10 @@ fn main() -> () {
         Some(x) => x,
         None => "",
     };
+    let marker = match args.value_of("marker") {
+        Some(x) => x,
+        None => "",
+    };
 
     let url: Box<dyn Url> = args_to_url(
         api.to_owned(),
@@ -57,12 +68,19 @@ fn main() -> () {
         term.to_owned(),
         value.to_owned(),
     );
-    let record: serde_json::Value =
-        serde_json::from_str(&reqwest::get(&url.generate()).unwrap().text().unwrap()).unwrap();
+    let record_str: String = {
+        match reqwest::get(&url.generate()) {
+            Ok(res) => res,
+            Err(e) => panic!("{}::{}, {}", marker, term, e),
+        }
+    }
+    .text()
+    .unwrap();
+    let record: serde_json::Value = serde_json::from_str(&record_str).unwrap();
 
     match api {
         "go" => {
-            let outpath = format!("{}_orthodb_results.tsv", term);
+            let outpath = format!("{}_{}_orthodb_results.tsv", marker, term);
             let handle = OpenOptions::new()
                 .write(true)
                 .create(true)
@@ -70,11 +88,12 @@ fn main() -> () {
                 .open(Path::new(&outpath))
                 .unwrap();
 
-            let json = GoOntologyJson::from(record);
+            let mut json = GoOntologyJson::from(record);
+            json.set_marker(&marker);
             json.to_csv(&handle);
         }
         "odb" => {
-            let outpath = format!("{}_orthodb_results.tsv", value);
+            let outpath = format!("{}_orthodb_results.tsv", marker);
             let handle = OpenOptions::new()
                 .write(true)
                 .create(true)
@@ -86,6 +105,7 @@ fn main() -> () {
                 .from_writer(handle);
             for hm in get_data(&record, "name").unwrap() {
                 wtr.write_record(&[
+                    &format!("{}", &marker),
                     &format!("{}", &value),
                     "OrthoDB",
                     &format!("{}", &value),
